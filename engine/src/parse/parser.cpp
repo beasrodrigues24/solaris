@@ -82,7 +82,7 @@ auto parse_camera(XMLElement const* const node) noexcept
     cpp::result<Vec3, ParseError> proj =
         cpp::result<Vec3, ParseError>(Vec3::cartesian(60, 1, 1000));
     if (proj_elem) {
-        auto proj = parse_projection(proj_elem);
+        proj = parse_projection(proj_elem);
         CHECK_RESULT(proj);
     } else {
         warn("no 'projection' attribute found for 'camera', using default");
@@ -232,115 +232,4 @@ auto parse_group(XMLElement const* const node, ParseState& parse_state) noexcept
     auto groups = std::vector<Group>();
     for (auto group_elem = node->FirstChildElement("group");
          group_elem;
-         group_elem = group_elem->NextSiblingElement("group")
-    ) {
-        auto group_res = parse_group(group_elem, parse_state);
-        CHECK_RESULT(group_res);
-        groups.push_back(std::move(*group_res));
-    }
-
-    auto transforms = std::vector<std::unique_ptr<Transform>>();
-    auto transforms_elem = node->FirstChildElement("transform");
-    if (transforms_elem != nullptr) {
-        for (auto transform_elem = transforms_elem->FirstChildElement();
-             transform_elem;
-             transform_elem = transform_elem->NextSiblingElement()
-        ) {
-            auto transform = parse_transform(transform_elem);
-            CHECK_RESULT(transform);
-            transforms.push_back(std::move(*transform));
-        }
-    }
-
-    return Group(std::move(models), std::move(groups), std::move(transforms));
-}
-
-auto parse_lights(XMLElement const* const node) noexcept
-    -> cpp::result<std::vector<std::unique_ptr<Light>>, ParseError>
-{
-    auto lights = std::vector<std::unique_ptr<Light>>();
-
-    if (!node) {
-        return lights;
-    }
-
-    for (auto light_elem = node->FirstChildElement("light");
-         light_elem;
-         light_elem = light_elem->NextSiblingElement("light")
-    ) {
-        char const* light_type;
-        light_elem->QueryStringAttribute("type", &light_type);
-        CHECK_NULL(light_type, ParseError::MALFORMED_LIGHT);
-
-        auto lt = std::string_view(light_type);
-        if (lt == "point") {
-            TRY_QUERY_FLOAT(light_elem, "posx", px, ParseError::MALFORMED_LIGHT);
-            TRY_QUERY_FLOAT(light_elem, "posy", py, ParseError::MALFORMED_LIGHT);
-            TRY_QUERY_FLOAT(light_elem, "posz", pz, ParseError::MALFORMED_LIGHT);
-
-            auto light = PointLight::try_new(Vec3::cartesian(px, py, pz));
-            CHECK_RESULT(light);
-            lights.push_back(std::make_unique<PointLight>(*light));
-
-        } else if (lt == "directional") {
-            TRY_QUERY_FLOAT(light_elem, "dirx", dx, ParseError::MALFORMED_LIGHT);
-            TRY_QUERY_FLOAT(light_elem, "diry", dy, ParseError::MALFORMED_LIGHT);
-            TRY_QUERY_FLOAT(light_elem, "dirz", dz, ParseError::MALFORMED_LIGHT);
-
-            auto light = DirectionalLight::try_new(Vec3::cartesian(dx, dy, dz));
-            CHECK_RESULT(light);
-            lights.push_back(std::make_unique<DirectionalLight>(*light));
-
-        } else if (lt == "spot") {
-            TRY_QUERY_FLOAT(light_elem, "posx", px, ParseError::MALFORMED_LIGHT);
-            TRY_QUERY_FLOAT(light_elem, "posy", py, ParseError::MALFORMED_LIGHT);
-            TRY_QUERY_FLOAT(light_elem, "posz", pz, ParseError::MALFORMED_LIGHT);
-            TRY_QUERY_FLOAT(light_elem, "dirx", dx, ParseError::MALFORMED_LIGHT);
-            TRY_QUERY_FLOAT(light_elem, "diry", dy, ParseError::MALFORMED_LIGHT);
-            TRY_QUERY_FLOAT(light_elem, "dirz", dz, ParseError::MALFORMED_LIGHT);
-            TRY_QUERY_FLOAT(light_elem, "cutoff", cutoff, ParseError::MALFORMED_LIGHT);
-
-            auto light = SpotLight::try_new(
-                Vec3::cartesian(px, py, pz),
-                Vec3::cartesian(dx, dy, dz),
-                cutoff
-            );
-            CHECK_RESULT(light);
-            lights.push_back(std::make_unique<SpotLight>(*light));
-
-        } else {
-            return cpp::fail(ParseError::MALFORMED_LIGHT);
-        }
-    }
-
-    return lights;
-}
-
-auto parse(std::string_view file_path) noexcept
-    -> cpp::result<World, ParseError>
-{
-    XMLDocument doc;
-    if (doc.LoadFile(file_path.data()) != XML_SUCCESS) {
-        return cpp::fail(ParseError::COULD_NOT_OPEN_XML_FILE);
-    }
-
-    auto const root = doc.FirstChild();
-    auto const camera_element = root->FirstChildElement("camera");
-    auto const group_element = root->FirstChildElement("group");
-    auto const lights_element = root->FirstChildElement("lights");
-
-    // parse camera
-    auto camera = parse_camera(camera_element);
-    CHECK_RESULT(camera);
-
-    // parse groups
-    auto parse_state = ParseState();
-    auto group = parse_group(group_element, parse_state);
-    CHECK_RESULT(group);
-
-    // parse lights
-    auto lights = parse_lights(lights_element);
-    CHECK_RESULT(lights);
-
-    return World(std::move(*camera), std::move(*group), std::move(*lights));
-}
+         group_
